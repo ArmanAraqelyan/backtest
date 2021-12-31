@@ -1,0 +1,5 @@
+vendor/
+depricated/
+
+#composer
+composer.lock

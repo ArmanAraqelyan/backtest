@@ -1,0 +1,10 @@
+{
+    "autoload": {
+        "psr-4": {
+            "Flagmer\\": "src/Flagmer/"
+        }
+    },
+    "require": {
+        "php-amqplib/php-amqplib": ">=v3.1"
+    }
+}

@@ -1,0 +1,120 @@
+<?php
+
+require_once 'vendor/autoload.php';
+
+if(!defined("STDIN")) {
+    throw new Exception("Can be executed only from command line:");
+}
+
+$command = '--help';    //by default
+if ($argc > 1) {
+    $command = $argv[1];
+}
+
+switch ($command) {
+    case "-r":
+    case "--run":
+        run(array_slice($argv, 2));
+        break;
+    case "-p":
+    case "--put":
+        put(array_slice($argv, 2));
+        break;
+    case "-w":
+    case "--work":
+        work(array_slice($argv, 2));
+        break;
+    default:
+    case "-h":
+    case "--help":
+        help();
+        break;
+}
+
+
+function help() {
+    echo
+    "
+    Usage: php handler [argument [value] [argument [value]]...]
+    
+    Arguments:
+    -p, --put=SOURCE                Allocate json task to queue,
+                                    SOURCE examples: /tasks.json, https://domain.com/tasks.json
+    -c, --chunk=SIZE                Splitting json into chunks. 3 is default
+    -h, --help                      Show possible commands
+    -r, --run                       Create workers to run tasks
+    -t, --threads=COUNT             Number of threads to run tasks
+    -q, --queue=NAME                Name of the queue. Default is 'queue'
+    -w, --work                      Run tasks from the queue in one thread
+                                     basicly --run command is creating 
+                                     some of this
+
+    php handler (--put|-p) (/tasks.json|https://domain.com/tasks.json) [(--chunk|-s) <decimal>] [(--queue|-q) <name>]
+    php handler (--run|-r) [(--threads|-t) <decimal>] [(--queue|-q) <name>]
+    php handler (--work|-w) [(--queue|-q) <name>]
+    ";
+}
+
+function run($args) {
+    $thread = 6;
+    $queue = "queue";
+
+    for ($i = 1; $i < count($args); $i++) {
+        switch ($args[$i]) {
+            case "-t":
+            case "--threads":
+                $thread = (int) $args[++$i];
+                break;
+            case "-q":
+            case "--queue":
+                $queue = $args[++$i];
+                break;
+        }
+    }
+
+    for($i = 0; $i < $thread; $i++) {
+        exec("php " . __FILE__ . " --work -q $queue > /dev/null 2>/dev/null &");
+    }
+}
+
+function put($args) {
+    $source = $args[0];
+    $chunk = 3;
+    $queue = "queue";
+
+    for ($i = 1; $i < count($args); $i++) {
+        switch ($args[$i]) {
+            case "-s":
+            case "--chunk":
+                $chunk = (int) $args[++$i];
+                break;
+            case "-q":
+            case "--queue":
+                $queue = $args[++$i];
+                break;
+        }
+    }
+
+    $filler = new Flagmer\Handler\QueueFiller($queue, $source);
+
+    $filler->fill($chunk);
+
+    echo "Success!";
+}
+
+function work($args) {
+    $queue = "queue";
+
+    for ($i = 1; $i < count($args); $i++) {
+        switch ($args[$i]) {
+            case "-q":
+            case "--queue":
+                $queue = $args[++$i];
+                break;
+        }
+    }
+
+    $worker = new Flagmer\Handler\Worker($queue);
+    
+    $worker->run();
+}
